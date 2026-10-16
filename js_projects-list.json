@@ -1,0 +1,16 @@
+{
+  "available_projects": [
+    {
+      "id": "workshop_json_example",
+      "title": "Сборочный Цех №1 (Формат JSON)",
+      "format": "json",
+      "config_url": "js/example_project.json"
+    },
+    {
+      "id": "warehouse_csv_example",
+      "title": "Логистический Склад (Формат CSV)",
+      "format": "csv",
+      "config_url": "js/example_project.csv"
+    }
+  ]
+}
