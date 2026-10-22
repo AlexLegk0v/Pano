@@ -4,25 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панорамный Проект (krpano + OpenLayers)</title>
-    <!-- OpenLayers CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.3.1/ol.css" type="text/css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div id="main-container">
-    <!-- Верхняя панель управления -->
     <div id="top-controls">
         <button class="btn" id="open-project-btn">📁 Выбрать проект</button>
         <button class="btn active" id="mode-pano-btn">🌐 Панорама</button>
         <button class="btn" id="mode-map-btn">🗺️ Карта WMS</button>
     </div>
 
-    <!-- Контейнер для отображения панорам krpano -->
     <div id="pano-viewer" class="view-mode active">
         <div id="krpano-div"></div>
-        
-        <!-- Индикатор прогресса загрузки файлов панорамы (в процентах) -->
         <div id="pano-loader" class="pano-loader-container">
             <div class="pano-loader-card">
                 <div class="pano-loader-title">Загрузка панорамы...</div>
@@ -34,22 +29,18 @@
         </div>
     </div>
 
-    <!-- Контейнер для карты OpenLayers -->
     <div id="map-viewer" class="view-mode">
         <div id="map-div"></div>
     </div>
 
-    <!-- Индикатор загрузки WMS-тайлов с GeoServer -->
     <div id="map-loader" class="loader-overlay">
         <div class="spinner"></div>
         <div class="loader-text">Загрузка карты GeoServer...</div>
     </div>
 
-    <!-- Нижняя превью-панель для переключения панорам внутри выбранного проекта -->
     <div id="scene-selector-panel"></div>
 </div>
 
-<!-- Модальное окно выбора проектов поверх основного экрана -->
 <div id="project-modal-overlay">
     <div id="project-modal">
         <div class="modal-header">
@@ -69,9 +60,9 @@
     </div>
 </div>
 
-<!-- Подключение OpenLayers и скрипта инициализации -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/14.0.1/math.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ol@v10.3.1/dist/ol.js"></script>
-<script src="krpano.js"></script> <!-- Официальное ядро krpano из вашей сборки -->
+<script src="krpano.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

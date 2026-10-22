@@ -1,8 +1,6 @@
 <krpano version="1.20">
-    <!-- Базовый стиль хотспотов -->
     <style name="skin_hotspotstyle" url="https://krpano.com/tours/corfu/vr/vtourskin_hotspot.png" scale="0.5" edge="top" distorted="false" />
 
-    <!-- Глобальные события ядра для отправки стейта в JS -->
     <events name="ol_sync_events" keep="true"
             onxmlloadcomplete="js(window.onKrpanoSceneChanged(get(scene[get(xml.scene)].name)));"
             onviewchange="js(window.onKrpanoViewChanged(get(view.hlookat)));"
@@ -11,7 +9,6 @@
             onloadcomplete="js(window.onPanoLoadComplete());"
     />
 
-    <!-- Фоновый асинхронный цикл для чтения внутреннего прогресса загрузки файлов бинарников -->
     <action name="track_progress" autoplay="regstart">
         asyncloop(true,
             if(global.progress.loading,

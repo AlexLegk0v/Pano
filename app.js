@@ -2,21 +2,18 @@ let currentProject = null;
 let currentScene = null;
 let krpanoInstance = null;
 
-// Переменные OpenLayers
 let map = null;
 let activeMarkerOverlay = null;
 let arrowElement = null;
 let markerVectorSource = null;
 let wmsLayer = null;
 
-// Переменные DOM лоадеров
 let panoLoaderEl = null;
 let progressBarFill = null;
 let progressTextEl = null;
 
-// Коэффициент перевода метров из локальной матрицы в градусы на карте (для референсной привязки)
 const METERS_TO_DEGREES = 0.000009; 
-const MAP_BUFFER_METERS = 100; // Буферная зона ограничений карты в метрах
+const MAP_BUFFER_METERS = 100; 
 
 document.addEventListener("DOMContentLoaded", () => {
     initTabs();
@@ -70,7 +67,7 @@ async function loadProjectsData() {
         window.projectsList = await response.json();
         renderProjectsList();
     } catch (error) {
-        console.error("Ошибка загрузки projects.json:", error);
+        console.error("Ошибка загрузки файла projects.json:", error);
     }
 }
 
@@ -92,8 +89,34 @@ function renderProjectsList() {
     });
 }
 
-function getPositionFromMatrix(matrix) {
-    return { x: matrix[12], y: matrix[13], z: matrix[14] }; // Извлечение смещений X, Y, Z (Column-Major)
+function getTransformFromMatrix(matrixData) {
+    const m = math.matrix(matrixData);
+    let arr = (m.size().length === 2) ? m.toArray() : math.reshape(m, [4, 4]).toArray();
+
+    const position = { x: arr[3][0], y: arr[3][1], z: arr[3][2] };
+
+    const r00 = arr[0][0], r01 = arr[0][1], r02 = arr[0][2];
+    const r10 = arr[1][0], r11 = arr[1][1], r12 = arr[1][2];
+    const r20 = arr[2][0], r21 = arr[2][1], r22 = arr[2][2];
+
+    let pitch = Math.asin(Math.max(-1, Math.min(1, r21)));
+    let yaw = 0, roll = 0;
+
+    if (Math.abs(r21) < 0.99999) {
+        yaw = Math.atan2(-r20, r22);
+        roll = Math.atan2(-r01, r11);
+    } else {
+        yaw = Math.atan2(r10, r00);
+        roll = 0;
+    }
+
+    let yawDegrees = yaw * (180 / Math.PI);
+    let pitchDegrees = pitch * (180 / Math.PI);
+    let rollDegrees = roll * (180 / Math.PI);
+
+    if (yawDegrees < 0) yawDegrees += 360;
+
+    return { position: position, yaw: yawDegrees, pitch: pitchDegrees, roll: rollDegrees };
 }
 
 function selectProject(project) {
@@ -108,9 +131,9 @@ function selectProject(project) {
     let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
 
     project.scenes.forEach(scene => {
-        const pos = getPositionFromMatrix(scene.matrix);
-        scene.lon = project.base_lon + (pos.x * METERS_TO_DEGREES);
-        scene.lat = project.base_lat + (pos.z * METERS_TO_DEGREES);
+        const trans = getTransformFromMatrix(scene.matrix);
+        scene.lon = project.base_lon + (trans.position.x * METERS_TO_DEGREES);
+        scene.lat = project.base_lat + (trans.position.z * METERS_TO_DEGREES);
 
         if (scene.lon < minLon) minLon = scene.lon;
         if (scene.lon > maxLon) maxLon = scene.lon;
@@ -160,8 +183,10 @@ function generateKrpanoProjectXML(project) {
     let xmlString = "";
 
     project.scenes.forEach(current => {
+        const trans = getTransformFromMatrix(current.matrix);
+        
         xmlString += `<scene name="${current.id}" title="${current.title}">`;
-        xmlString += `<view hlookat="0.0" vlookat="0.0" fov="90.0" />`;
+        xmlString += `<view hlookat="${trans.yaw.toFixed(2)}" vlookat="${trans.pitch.toFixed(2)}" camroll="${trans.roll.toFixed(2)}" fov="90.0" />`;
 
         if (current.imageType === "cube") {
             xmlString += `<image><cube url="${current.url}" /></image>`;
@@ -169,13 +194,20 @@ function generateKrpanoProjectXML(project) {
             xmlString += `<image><sphere url="${current.url}" /></image>`;
         }
 
-        const currentPos = getPositionFromMatrix(current.matrix);
+        const currentPosVec = math.matrix(Object.values(trans.position));
+
         project.scenes.forEach(other => {
             if (current.id !== other.id) {
-                const otherPos = getPositionFromMatrix(other.matrix);
-                const dx = otherPos.x - currentPos.x;
-                const dz = otherPos.z - currentPos.z;
-                if (Math.sqrt(dx*dx + dz*dz) < 200) {
+                const otherTrans = getTransformFromMatrix(other.matrix);
+                const otherPosVec = math.matrix(Object.values(otherTrans.position));
+                
+                const diffVec = math.subtract(otherPosVec, currentPosVec).toArray();
+                const dx = diffVec[0];
+                const dz = diffVec[2];
+
+                const distance = math.norm(math.subtract(otherPosVec, currentPosVec));
+
+                if (distance < 200) {
                     let ath = Math.atan2(dx, dz) * (180 / Math.PI);
                     xmlString += `<hotspot name="to_${other.id}" ath="${ath.toFixed(2)}" atv="0.0" style="skin_hotspotstyle" onclick="loadscene(${other.id}, null, MERGE);" />`;
                 }

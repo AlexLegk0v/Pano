@@ -13,21 +13,36 @@
         "title": "Входная группа",
         "imageType": "equirectangular",
         "url": "/net-panos/aurora_project/entrance_360.jpg",
-        "matrix": [1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1]
+        "matrix": [
+          [1, 0, 0, 0],
+          [0, 1, 0, 0],
+          [0, 0, 1, 0],
+          [0, 0, 0, 1]
+        ]
       },
       {
         "id": "scene_av_2",
         "title": "Детская площадка",
         "imageType": "cube",
         "url": "/net-panos/aurora_project/playground_tiles/pano_%s.jpg",
-        "matrix": [1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  40, 0, 50, 1]
+        "matrix": [
+          [0.7071, 0, 0.7071, 0],
+          [0, 1, 0, 0],
+          [-0.7071, 0, 0.7071, 0],
+          [40, 0, 50, 1]
+        ]
       },
       {
         "id": "scene_av_3",
         "title": "Внутренний двор",
         "imageType": "equirectangular",
         "url": "/net-panos/aurora_project/yard_360.jpg",
-        "matrix": [1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  -80, 0, -110, 1]
+        "matrix": [
+          [0.866, 0.171, 0.469, 0],
+          [-0.129, 0.981, -0.141, 0],
+          [-0.484, 0.061, 0.872, 0],
+          [-80, 5, -110, 1]
+        ]
       }
     ]
   }
