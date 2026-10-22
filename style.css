@@ -1,0 +1,185 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #1a1a1a;
+}
+#main-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+.view-mode {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 1;
+    display: none;
+}
+.view-mode.active {
+    display: block;
+}
+#pano-viewer { background-color: #000; position: relative; }
+#krpano-div, #map-div { width: 100%; height: 100%; }
+
+/* Панель управления кнопками */
+#top-controls {
+    position: absolute;
+    top: 20px; left: 20px;
+    z-index: 10;
+    display: flex; gap: 10px;
+    pointer-events: none;
+}
+.btn {
+    background: rgba(30, 30, 30, 0.85);
+    color: #fff;
+    border: 1px solid #444;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    pointer-events: auto;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+.btn:hover { background: #333; border-color: #666; }
+.btn.active { background: #0078ff; border-color: #00c6ff; }
+
+/* Нижний селектор панорам */
+#scene-selector-panel {
+    position: absolute;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(20, 20, 20, 0.85);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex; gap: 8px;
+    max-width: 90%;
+    overflow-x: auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+.scene-thumb {
+    flex: 0 0 110px;
+    height: 70px;
+    background: #333;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; color: #fff;
+    font-size: 11px; font-weight: bold; padding: 4px;
+    user-select: none; transition: all 0.2s ease;
+}
+.scene-thumb:hover { border-color: #888; }
+.scene-thumb.active {
+    border-color: #0078ff;
+    box-shadow: 0 0 8px #0078ff;
+    background: #0056b3;
+}
+
+/* Модальное окно проектов */
+#project-modal-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+}
+#project-modal {
+    background: #222; color: #fff;
+    width: 500px; max-width: 90%; max-height: 80%;
+    border-radius: 10px; border: 1px solid #444;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-header {
+    padding: 15px 20px; border-bottom: 1px solid #333;
+    display: flex; justify-content: space-between; align-items: center; background: #2a2a2a;
+}
+.modal-body { padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+.search-filter-box { display: flex; gap: 10px; }
+.filter-select {
+    background: #333; border: 1px solid #555; color: #fff;
+    padding: 8px 12px; border-radius: 4px; font-size: 14px; outline: none; width: 100%;
+}
+.project-list { display: flex; flex-direction: column; gap: 8px; }
+.project-item {
+    background: #2d2d2d; border: 1px solid #3d3d3d;
+    padding: 12px 15px; border-radius: 6px; cursor: pointer;
+}
+.project-item:hover { background: #3d3d3d; border-color: #555; }
+.project-item .title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+.project-item .meta { font-size: 12px; color: #aaa; }
+.close-modal-btn { background: none; border: none; color: #aaa; font-size: 20px; cursor: pointer; }
+
+/* Кастомный маркер направления взгляда для OpenLayers */
+.view-marker-container {
+    position: relative;
+    width: 32px; height: 32px;
+}
+.view-arrow {
+    width: 0; height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 22px solid #ff3333;
+    position: absolute;
+    top: -5px; left: 6px;
+    transition: transform 0.04s linear;
+}
+.view-center-dot {
+    width: 10px; height: 10px;
+    background: #ffffff; border: 2px solid #ff3333; border-radius: 50%;
+    position: absolute; top: 11px; left: 11px;
+}
+
+/* Индикатор загрузки GeoServer (Спиннер) */
+.loader-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(26, 26, 26, 0.75);
+    z-index: 50; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 15px;
+}
+.spinner {
+    width: 50px; height: 50px;
+    border: 5px solid #333; border-top: 5px solid #0078ff; border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+.loader-text { color: #fff; font-size: 14px; font-weight: 600; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Индикатор прогресса файлов панорам */
+.pano-loader-container {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 15; display: none; align-items: center; justify-content: center;
+}
+.pano-loader-card {
+    background: rgba(20, 20, 20, 0.9); border: 1px solid #444;
+    border-radius: 8px; padding: 20px; width: 300px; text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+}
+.pano-loader-title { color: #fff; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.progress-bar-bg { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+.progress-bar-fill { width: 0%; height: 100%; background: #0078ff; box-shadow: 0 0 8px #0078ff; transition: width 0.1s ease-out; }
+.progress-text { color: #aaa; font-size: 12px; font-weight: bold; }
+
+/* Кастомизация масштабной линейки OpenLayers */
+.ol-scale-line {
+    background: rgba(30, 30, 30, 0.85) !important;
+    border: 1px solid #444 !important; border-radius: 4px !important;
+    bottom: 20px !important; left: 20px !important; padding: 6px !important;
+}
+.ol-scale-line-inner {
+    border: 1px solid #fff !important; border-top: none !important;
+    color: #fff !important; font-size: 11px !important; font-weight: bold !important;
+}
