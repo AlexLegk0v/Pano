@@ -1,71 +1,42 @@
-using System.Collections.Generic;
-using GeoAPI.Geometries;
-using NetTopologySuite.Geometries;
-using NetTopologySuite.Operation.Polygonize;
-
-public static class ValidateGeometryExtension
+private static IGeometry FixSinglePolygon(IPolygon polygon)
 {
-    public static IGeometry Validate(this IGeometry geom)
+    var polygonizer = new Polygonizer();
+    
+    // Передаем все линии исходного полигона с дырками
+    polygonizer.Add(polygon.Boundary);
+
+    var faces = polygonizer.GetPolygons();
+    if (faces.Count == 0) return polygon.Factory.CreatePolygon();
+
+    // 1. Сортируем все собранные полигоны по убыванию площади
+    var sortedFaces = new List<IPolygon>();
+    foreach (IPolygon face in faces) sortedFaces.Add(face);
+    sortedFaces.Sort((x, y) => y.Area.CompareTo(x.Area));
+
+    // 2. Самый большой полигон — это наша внешняя оболочка (Shell)
+    IPolygon shellPolygon = sortedFaces[0];
+    ILinearRing shellRing = (ILinearRing)shellPolygon.ExteriorRing;
+
+    // 3. Все остальные полигоны гарантированно являются дырками (Holes)
+    var holeRings = new List<ILinearRing>();
+    for (int i = 1; i < sortedFaces.Count; i++)
     {
-        if (geom == null || geom.IsEmpty) return geom;
-
-        if (geom.IsValid)
+        // Извлекаем внешнюю границу каждого меньшего полигона 
+        // и превращаем её во внутреннее кольцо (дырку) для нашего целевого полигона
+        ILinearRing holeRing = (ILinearRing)sortedFaces[i].ExteriorRing;
+        
+        // ВАЖНО: Для дырки направление обхода точек должно быть противоположным оболочке.
+        // Если движок NTS определил обход неверно, принудительно разворачиваем его.
+        if (shellRing.IsCCW == holeRing.IsCCW)
         {
-            var clone = (IGeometry)geom.Clone();
-            clone.Normalize();
-            return clone;
-        }
-
-        if (geom is IPolygon polygon)
-        {
-            return FixSinglePolygon(polygon);
+            holeRing = (ILinearRing)holeRing.Reverse();
         }
         
-        if (geom is IMultiPolygon multiPolygon)
-        {
-            var fixedGeoms = new List<IGeometry>();
-            for (int i = 0; i < multiPolygon.NumGeometries; i++)
-            {
-                fixedGeoms.Add(FixSinglePolygon((IPolygon)multiPolygon.GetGeometryN(i)));
-            }
-            // Объединяем исправленные части обратно в один валидный объект
-            return geom.Factory.BuildGeometry(fixedGeoms).Union();
-        }
-
-        return geom;
+        holeRings.Add(holeRing);
     }
 
-    private static IGeometry FixSinglePolygon(IPolygon polygon)
-    {
-        var polygonizer = new Polygonizer();
-        
-        // Извлекаем все линии (включая линии дырок) и передаем в Polygonizer
-        IGeometry lines = polygon.Boundary;
-        polygonizer.Add(lines);
+    // 4. Собираем ОДИН итоговый IPolygon через фабрику геометрий
+    IPolygon fixedPolygon = polygon.Factory.CreatePolygon(shellRing, holeRings.ToArray());
 
-        // Получаем все замкнутые контуры, которые смог собрать Polygonizer
-        var faces = polygonizer.GetPolygons();
-        if (faces.Count == 0) return polygon.Factory.CreatePolygon();
-
-        // Процесс восстановления дырок:
-        // Нам нужно отсортировать полигоны по площади (от больших к меньшим).
-        // Большие полигоны станут внешними границами, а меньшие, 
-        // которые попадают внутрь них — будут вычитаться (становиться дырками).
-        var sortedFaces = new List<IGeometry>();
-        foreach (IGeometry face in faces) sortedFaces.Add(face);
-        sortedFaces.Sort((x, y) => y.Area.CompareTo(x.Area)); // Сортировка по убыванию площади
-
-        IGeometry result = sortedFaces[0];
-
-        // Итерируемся по остальным контурам и вычитаем их через симметрическую разность или разность,
-        // чтобы "прожечь" дырки в местах пересечений контуров
-        for (int i = 1; i < sortedFaces.Count; i++)
-        {
-            // Используем Симметрическую разность (SymmetricDifference) для восстановления 
-            // правильной топологии «вложенных» контуров.
-            result = result.SymmetricDifference(sortedFaces[i]);
-        }
-
-        return result;
-    }
+    return fixedPolygon;
 }
