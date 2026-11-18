@@ -1,114 +1,69 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { useTableSettingsStore } from 'src/stores/tableSettings'
 
-export const useTableSettingsStore = defineStore(
-  'tableSettings',
-  () => {
-    // { [tableId]: { [colId]: { width?: number, visible?: boolean } } }
-    const settings = ref({})
+export const vResize = {
+  mounted(th, binding) {
+    const tableStore = useTableSettingsStore()
+    const { table, col } = binding.value || {}
 
-    // { [tableId]: ['col2', 'col1', 'col3'] }
-    const order = ref({})
+    // 1. Создаем div-обертку родителем для содержимого th
+    const wrapper = document.createElement('div')
+    wrapper.className = 'th-resize-wrapper row items-center no-wrap'
 
-    const getColKey = (col) => col.name || col.field || col.id
-
-    // Сортирует переданный извне массив колонок согласно сохраненному порядку
-    const applyOrderToColumns = (tableId, externalColumns = []) => {
-      const savedOrder = order.value[tableId] || []
-      if (!savedOrder.length) return externalColumns
-
-      return [...externalColumns].sort((a, b) => {
-        const indexA = savedOrder.indexOf(getColKey(a))
-        const indexB = savedOrder.indexOf(getColKey(b))
-
-        if (indexA === -1 && indexB === -1) return 0
-        if (indexA === -1) return 1
-        if (indexB === -1) return -1
-
-        return indexA - indexB
-      })
+    while (th.firstChild) {
+      wrapper.appendChild(th.firstChild)
     }
 
-    // Перемещает колонку в сохраненном порядке, опираясь на актуальный список колонок извне
-    const moveColumn = (tableId, externalColumns, fromIndex, toIndex) => {
-      const currentOrderedKeys = applyOrderToColumns(tableId, externalColumns).map(getColKey)
+    // 2. Создаем полоску захвата во всю высоту правого края
+    const handle = document.createElement('div')
+    handle.className = 'col-resizer'
+    wrapper.appendChild(handle)
+    th.appendChild(wrapper)
 
-      if (
-        fromIndex < 0 ||
-        toIndex < 0 ||
-        fromIndex >= currentOrderedKeys.length ||
-        toIndex >= currentOrderedKeys.length ||
-        fromIndex === toIndex
-      ) {
-        return
+    // 3. Вычисляем минимальную ширину один раз при монтировании
+    const fixedChild = wrapper.querySelector('.col-auto')
+    const minW = fixedChild ? fixedChild.offsetWidth + 40 : 60
+    const defaultWidth = 220
+
+    // Жесткая установка ширины для th
+    const applyWidth = (px) => {
+      const val = px + 'px'
+      th.style.setProperty('width', val, 'important')
+      th.style.setProperty('min-width', val, 'important')
+      th.style.setProperty('max-width', val, 'important')
+    }
+
+    // 4. Восстанавливаем сохраненную ширину из Pinia
+    const savedWidth = table && col ? tableStore.getColumnWidth(table, col) : null
+    const initialWidth = savedWidth ? Math.max(minW, savedWidth) : defaultWidth
+    applyWidth(initialWidth)
+
+    // 5. Обработка перетаскивания мышью
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      const startX = e.clientX
+      const startW = th.offsetWidth
+      let currentWidth = startW
+
+      const onMove = (ev) => {
+        currentWidth = Math.max(minW, startW + ev.clientX - startX)
+        applyWidth(currentWidth)
       }
 
-      const [movedItem] = currentOrderedKeys.splice(fromIndex, 1)
-      currentOrderedKeys.splice(toIndex, 0, movedItem)
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove)
+        document.removeEventListener('mouseup', onUp)
+        document.body.style.cursor = ''
 
-      order.value = {
-        ...order.value,
-        [tableId]: currentOrderedKeys
-      }
-    }
-
-    const getColumnWidth = (tableId, colId) => {
-      return settings.value[tableId]?.[colId]?.width || null
-    }
-
-    const setColumnWidth = (tableId, colId, width) => {
-      settings.value = {
-        ...settings.value,
-        [tableId]: {
-          ...(settings.value[tableId] || {}),
-          [colId]: {
-            ...(settings.value[tableId]?.[colId] || {}),
-            width
-          }
+        if (table && col) {
+          tableStore.setColumnWidth(table, col, currentWidth)
         }
       }
-    }
 
-    const isColumnVisible = (tableId, colId) => {
-      return settings.value[tableId]?.[colId]?.visible ?? true
-    }
-
-    const setColumnVisible = (tableId, colId, visible) => {
-      settings.value = {
-        ...settings.value,
-        [tableId]: {
-          ...(settings.value[tableId] || {}),
-          [colId]: {
-            ...(settings.value[tableId]?.[colId] || {}),
-            visible
-          }
-        }
-      }
-    }
-
-    const resetTableSettings = (tableId) => {
-      const updatedSettings = { ...settings.value }
-      delete updatedSettings[tableId]
-      settings.value = updatedSettings
-
-      const updatedOrder = { ...order.value }
-      delete updatedOrder[tableId]
-      order.value = updatedOrder
-    }
-
-    return {
-      settings,
-      order,
-      applyOrderToColumns,
-      moveColumn,
-      getColumnWidth,
-      setColumnWidth,
-      isColumnVisible,
-      setColumnVisible,
-      resetTableSettings
-    }
-  },
-  {
-    persist: true
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup', onUp)
+      document.body.style.cursor = 'col-resize'
+    })
   }
-)
+}
