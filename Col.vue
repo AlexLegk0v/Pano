@@ -1,27 +1,114 @@
-import { ref, computed } from 'vue'
-import { useTableSettingsStore } from 'src/stores/tableSettings'
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
 
-const TABLE_ID = 'main_projects_table'
-const tableRenderKey = ref(0)
-const tableStore = useTableSettingsStore()
+export const useTableSettingsStore = defineStore(
+  'tableSettings',
+  () => {
+    // { [tableId]: { [colId]: { width?: number, visible?: boolean } } }
+    const settings = ref({})
 
-// Состояние модального окна и строки поиска
-const isColumnsDialogOpen = ref(false)
-const columnSearch = ref('')
+    // { [tableId]: ['col2', 'col1', 'col3'] }
+    const order = ref({})
 
-// Фильтрация списка колонок при вводе в поиск
-const filteredColumns = computed(() => {
-  const all = tableStore.getTableColumns(TABLE_ID)
-  if (!columnSearch.value) return all
+    const getColKey = (col) => col.name || col.field || col.id
 
-  const query = columnSearch.value.toLowerCase().trim()
-  return all.filter(col => col.label.toLowerCase().includes(query))
-})
+    // Сортирует переданный извне массив колонок согласно сохраненному порядку
+    const applyOrderToColumns = (tableId, externalColumns = []) => {
+      const savedOrder = order.value[tableId] || []
+      if (!savedOrder.length) return externalColumns
 
-// Включить отображение всех колонок разом
-const showAllColumns = () => {
-  const all = tableStore.getTableColumns(TABLE_ID)
-  all.forEach(col => {
-    tableStore.setColumnVisible(TABLE_ID, col.name, true)
-  })
-}
+      return [...externalColumns].sort((a, b) => {
+        const indexA = savedOrder.indexOf(getColKey(a))
+        const indexB = savedOrder.indexOf(getColKey(b))
+
+        if (indexA === -1 && indexB === -1) return 0
+        if (indexA === -1) return 1
+        if (indexB === -1) return -1
+
+        return indexA - indexB
+      })
+    }
+
+    // Перемещает колонку в сохраненном порядке, опираясь на актуальный список колонок извне
+    const moveColumn = (tableId, externalColumns, fromIndex, toIndex) => {
+      const currentOrderedKeys = applyOrderToColumns(tableId, externalColumns).map(getColKey)
+
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= currentOrderedKeys.length ||
+        toIndex >= currentOrderedKeys.length ||
+        fromIndex === toIndex
+      ) {
+        return
+      }
+
+      const [movedItem] = currentOrderedKeys.splice(fromIndex, 1)
+      currentOrderedKeys.splice(toIndex, 0, movedItem)
+
+      order.value = {
+        ...order.value,
+        [tableId]: currentOrderedKeys
+      }
+    }
+
+    const getColumnWidth = (tableId, colId) => {
+      return settings.value[tableId]?.[colId]?.width || null
+    }
+
+    const setColumnWidth = (tableId, colId, width) => {
+      settings.value = {
+        ...settings.value,
+        [tableId]: {
+          ...(settings.value[tableId] || {}),
+          [colId]: {
+            ...(settings.value[tableId]?.[colId] || {}),
+            width
+          }
+        }
+      }
+    }
+
+    const isColumnVisible = (tableId, colId) => {
+      return settings.value[tableId]?.[colId]?.visible ?? true
+    }
+
+    const setColumnVisible = (tableId, colId, visible) => {
+      settings.value = {
+        ...settings.value,
+        [tableId]: {
+          ...(settings.value[tableId] || {}),
+          [colId]: {
+            ...(settings.value[tableId]?.[colId] || {}),
+            visible
+          }
+        }
+      }
+    }
+
+    const resetTableSettings = (tableId) => {
+      const updatedSettings = { ...settings.value }
+      delete updatedSettings[tableId]
+      settings.value = updatedSettings
+
+      const updatedOrder = { ...order.value }
+      delete updatedOrder[tableId]
+      order.value = updatedOrder
+    }
+
+    return {
+      settings,
+      order,
+      applyOrderToColumns,
+      moveColumn,
+      getColumnWidth,
+      setColumnWidth,
+      isColumnVisible,
+      setColumnVisible,
+      resetTableSettings
+    }
+  },
+  {
+    persist: true
+  }
+)
