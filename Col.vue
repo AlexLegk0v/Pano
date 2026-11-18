@@ -1,6 +1,6 @@
 <template>
   <div class="q-pa-md">
-    <!-- Верхняя панель управления -->
+    <!-- Верхняя панель управления (осталась только кнопка открытия настроек) -->
     <div class="row items-center q-gutter-md q-mb-sm">
       <q-btn
         label="Настройка колонок"
@@ -10,24 +10,17 @@
         color="primary"
         @click="isColumnsDialogOpen = true"
       />
-
-      <q-btn
-        label="Сбросить настройки"
-        size="sm"
-        flat
-        color="grey-7"
-        @click="handleReset"
-      />
     </div>
 
-    <!-- Модальное окно выбора и сортировки колонок -->
+    <!-- Модальное окно с подпиской на событие @reset -->
     <ColumnsSettingsDialog
       v-model="isColumnsDialogOpen"
       :table-id="tableId"
       :columns="activeColumns"
+      @reset="tableRenderKey++"
     />
 
-    <!-- Таблица с :columns и :visible-columns -->
+    <!-- Таблица -->
     <q-table
       :key="tableRenderKey"
       :rows="rows"
@@ -106,19 +99,16 @@ watch(
   { immediate: true }
 )
 
-// Весь перечень колонок в сохраненном порядке (для :columns)
 const orderedColumns = computed(() => {
   return tableStore.applyOrderToColumns(props.tableId, activeColumns.value)
 })
 
-// Массив имен только видимых колонок (для :visible-columns)
 const visibleColumnNames = computed(() => {
   return orderedColumns.value
     .filter(col => tableStore.isColumnVisible(props.tableId, col.name))
     .map(col => col.name)
 })
 
-// Метод обновления колонок, данных и фильтров извне
 const refresh = (newColumns, newRows, newFilters = {}) => {
   activeColumns.value = normalizeColumns(newColumns)
   rows.value = newRows || []
@@ -127,11 +117,6 @@ const refresh = (newColumns, newRows, newFilters = {}) => {
 }
 
 defineExpose({ refresh })
-
-const handleReset = () => {
-  tableStore.resetTableSettings(props.tableId)
-  tableRenderKey.value++
-}
 </script>
 
 <style scoped>
